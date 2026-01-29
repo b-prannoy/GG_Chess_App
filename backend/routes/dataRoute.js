@@ -19,7 +19,7 @@ router.get("/all", async (req, res) => {
       User.find(),
       ChessGame.find(),
       Reel.find()
-        .populate("createdBy", "username")
+        .populate("username")
         .populate("gameId"),
       Comment.find()
         .populate("userId", "username")
@@ -90,10 +90,9 @@ router.post("/chessgame", async (req, res) => {
 // POST - Create a new Reel
 router.post("/reel", async (req, res) => {
   try {
-    const { createdBy, video, content, gameId, status } = req.body;
+    const { video, content, gameId, status } = req.body;
     
     const newReel = new Reel({
-      createdBy,
       video: {
         url: video?.url,
         thumbnail: video?.thumbnail || "",

@@ -61,7 +61,6 @@ async function seed() {
 
     // REEL
     const reel = await Reel.create({
-      createdBy: admin._id,
       video: {
         url: "https://cdn.app.com/videos/kasparov.mp4",
         thumbnail: "https://cdn.app.com/thumbs/kasparov.jpg",
