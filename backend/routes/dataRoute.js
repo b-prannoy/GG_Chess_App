@@ -19,10 +19,8 @@ router.get("/all", async (req, res) => {
       User.find(),
       ChessGame.find(),
       Reel.find()
-        .populate("username")
         .populate("gameId"),
       Comment.find()
-        .populate("userId", "username")
         .populate("reelId"),
     ]);
 

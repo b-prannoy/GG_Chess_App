@@ -24,11 +24,17 @@ router.post("/register", async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-        // Create new user
+        // Create new user with empty profile
         const user = new User({
             username,
             email,
-            password: hashedPassword
+            password: hashedPassword,
+            profile: {
+                name: null,
+                avatarUrl: null,
+                bio: null,
+                chessRating: 800  // default rating
+            }
         });
 
         await user.save();
@@ -104,6 +110,60 @@ router.post("/logout", (req, res) => {
         res.clearCookie("connect.sid");
         res.json({ message: "Logout successful" });
     });
+});
+
+// PUT /auth/setup-profile - Setup or update user profile
+router.put("/setup-profile", async (req, res) => {
+    try {
+        // Check if user is authenticated
+        if (!req.session.userId) {
+            return res.status(401).json({ error: "You must be logged in to setup your profile" });
+        }
+
+        const { name, avatarUrl, bio, chessRating } = req.body;
+
+        // Build profile update object (only include provided fields)
+        const profileUpdate = {};
+        if (name !== undefined) profileUpdate["profile.name"] = name;
+        if (avatarUrl !== undefined) profileUpdate["profile.avatarUrl"] = avatarUrl;
+        if (bio !== undefined) profileUpdate["profile.bio"] = bio;
+        if (chessRating !== undefined) {
+            // Validate chess rating is a number
+            if (typeof chessRating !== "number" || chessRating < 0) {
+                return res.status(400).json({ error: "Chess rating must be a positive number" });
+            }
+            profileUpdate["profile.chessRating"] = chessRating;
+        }
+
+        // Check if at least one field is provided
+        if (Object.keys(profileUpdate).length === 0) {
+            return res.status(400).json({ error: "At least one profile field is required (name, avatarUrl, bio, or chessRating)" });
+        }
+
+        // Update user profile
+        const updatedUser = await User.findByIdAndUpdate(
+            req.session.userId,
+            { $set: profileUpdate },
+            { new: true, runValidators: true }
+        ).select("-password");
+
+        if (!updatedUser) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        res.json({
+            message: "Profile updated successfully",
+            user: {
+                id: updatedUser._id,
+                username: updatedUser.username,
+                email: updatedUser.email,
+                profile: updatedUser.profile
+            }
+        });
+    } catch (error) {
+        console.error("Profile setup error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
 });
 
 // DELETE /auth/delete-account - Delete user account
