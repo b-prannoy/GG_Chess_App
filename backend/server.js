@@ -20,7 +20,6 @@ app.use(express.json());
 
 // Connect to database
 await connectDB();
-//hello there
 
 
 // Routes
