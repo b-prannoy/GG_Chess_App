@@ -14,7 +14,9 @@ const reelSchema = new mongoose.Schema({
     difficulty: {
       type: String,
       enum: ["beginner", "intermediate", "advanced"]
-    }
+    },
+    whitePlayer: String,
+    blackPlayer: String
   },
 
   chessData: {

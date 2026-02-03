@@ -11,6 +11,8 @@ export interface ReelContent {
     description: string;
     tags: string[];
     difficulty: "beginner" | "intermediate" | "advanced";
+    whitePlayer?: string;
+    blackPlayer?: string;
 }
 
 export interface ReelEngagement {

@@ -9,11 +9,19 @@ import {
 } from "react-native";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
-import { Play, Pause, Clock, Volume2, VolumeX } from "lucide-react-native";
+import { Play, Pause, Clock, Volume2, VolumeX, Circle } from "lucide-react-native";
 import { Reel } from "@/types/reel";
 import { ReelActions } from "./ReelActions";
 import { colors } from "@/constants/themes";
 import { getDifficultyColor } from "@/services/reelApi";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// Difficulty mapping
+const difficultyLabels: Record<string, string> = {
+    beginner: "EASY",
+    intermediate: "MEDIUM",
+    advanced: "HARD",
+};
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const VIEW_TRIGGER_DELAY = 2000; // 2 seconds before counting as a view
@@ -41,6 +49,10 @@ export function ReelCard({
     onShare,
     onView,
 }: ReelCardProps) {
+    const insets = useSafeAreaInsets();
+    const bottomTabHeight = 60; // Approximate height of bottom tab bar
+    const bottomPadding = insets.bottom + bottomTabHeight + 20; // Dynamic padding
+
     const videoRef = useRef<Video>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -140,6 +152,7 @@ export function ReelCard({
                     isMuted={isMuted}
                     shouldPlay={isVisible}
                     onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+                    onError={(error) => console.error("Video Playback Error:", error)}
                 />
             </TouchableOpacity>
 
@@ -192,39 +205,67 @@ export function ReelCard({
 
             {/* Bottom Gradient & Content */}
             <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.8)"]}
-                style={styles.bottomGradient}
+                colors={["transparent", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.9)"]}
+                style={[
+                    styles.bottomGradient,
+                    { paddingBottom: bottomPadding }
+                ]}
                 pointerEvents="box-none"
             >
-                {/* Difficulty Badge */}
-                <View
-                    style={[
-                        styles.difficultyBadge,
-                        { backgroundColor: getDifficultyColor(reel.content.difficulty) + "CC" },
-                    ]}
-                >
-                    <Text style={styles.difficultyText}>
-                        {reel.content.difficulty.toUpperCase()}
+                <View style={styles.contentContainer}>
+                    {/* Difficulty Badge */}
+                    <View
+                        style={[
+                            styles.difficultyBadge,
+                            { backgroundColor: getDifficultyColor(reel.content.difficulty) + "CC" },
+                        ]}
+                    >
+                        <Text style={styles.difficultyText}>
+                            {difficultyLabels[reel.content.difficulty] || reel.content.difficulty.toUpperCase()}
+                        </Text>
+                    </View>
+
+                    {/* Title */}
+                    <Text style={styles.title} numberOfLines={2}>
+                        {reel.content.title}
                     </Text>
-                </View>
 
-                {/* Title */}
-                <Text style={styles.title} numberOfLines={2}>
-                    {reel.content.title}
-                </Text>
+                    {/* Description */}
+                    {reel.content.description ? (
+                        <Text style={styles.description} numberOfLines={3}>
+                            {reel.content.description}
+                        </Text>
+                    ) : null}
 
-                {/* Description */}
-                <Text style={styles.description} numberOfLines={2}>
-                    {reel.content.description}
-                </Text>
-
-                {/* Tags */}
-                <View style={styles.tagsContainer}>
-                    {(reel.content.tags || []).slice(0, 3).map((tag, index) => (
-                        <View key={index} style={styles.tag}>
-                            <Text style={styles.tagText}>#{tag}</Text>
+                    {/* Hashtags */}
+                    {reel.content.tags && reel.content.tags.length > 0 && (
+                        <View style={styles.tagsContainer}>
+                            {reel.content.tags.map((tag, index) => (
+                                <Text key={index} style={styles.hashtag}>
+                                    #{tag}
+                                </Text>
+                            ))}
                         </View>
-                    ))}
+                    )}
+
+                    {/* Player Matchup */}
+                    {(reel.content.whitePlayer || reel.content.blackPlayer) && (
+                        <View style={styles.playerMatchup}>
+                            <View style={styles.playerInfo}>
+                                <Circle size={12} color="white" fill="white" />
+                                <Text style={styles.playerName} numberOfLines={1}>
+                                    {reel.content.whitePlayer || "White"}
+                                </Text>
+                            </View>
+                            <Text style={styles.vsText}>vs</Text>
+                            <View style={styles.playerInfo}>
+                                <Circle size={12} color="black" fill="black" style={styles.blackPlayerIcon} />
+                                <Text style={styles.playerName} numberOfLines={1}>
+                                    {reel.content.blackPlayer || "Black"}
+                                </Text>
+                            </View>
+                        </View>
+                    )}
                 </View>
             </LinearGradient>
 
@@ -321,48 +362,96 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        paddingTop: 60,
-        paddingBottom: 140, // Extra padding for tab bar
+        paddingTop: 100,
+        paddingBottom: 90, // Adjusted to sit above tab bar and actions
         paddingHorizontal: 16,
+        justifyContent: "flex-end",
+    },
+    contentContainer: {
+        width: "85%", // Leave room for right-side actions
     },
     difficultyBadge: {
         alignSelf: "flex-start",
         paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 12,
+        borderRadius: 8,
         marginBottom: 8,
     },
     difficultyText: {
         color: colors.text.primary,
-        fontSize: 10,
-        fontWeight: "700",
-        letterSpacing: 1,
+        fontSize: 11,
+        fontWeight: "800",
+        letterSpacing: 0.5,
+        textShadowColor: "rgba(0,0,0,0.5)",
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 2,
     },
     title: {
         color: colors.text.primary,
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: "700",
-        marginBottom: 8,
+        marginBottom: 6,
+        textShadowColor: "rgba(0,0,0,0.5)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
     },
     description: {
-        color: colors.text.secondary,
+        color: colors.text.primary,
         fontSize: 14,
         lineHeight: 20,
-        marginBottom: 12,
+        marginBottom: 8,
+        textShadowColor: "rgba(0,0,0,0.5)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+        opacity: 0.9,
     },
     tagsContainer: {
         flexDirection: "row",
         flexWrap: "wrap",
         gap: 8,
+        marginBottom: 12,
     },
-    tag: {
-        backgroundColor: "rgba(255, 255, 255, 0.15)",
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
+    hashtag: {
+        color: colors.accent.cyan,
+        fontSize: 14,
+        fontWeight: "600",
+        textShadowColor: "rgba(0,0,0,0.5)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
-    tagText: {
+    // Old tag styles removed in favor of simple text tags
+    playerMatchup: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 4,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: "rgba(255,255,255,0.2)",
+    },
+    playerInfo: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+    },
+    playerName: {
+        color: colors.text.primary,
+        fontSize: 14,
+        fontWeight: "600",
+        maxWidth: 100,
+        textShadowColor: "rgba(0,0,0,0.5)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    vsText: {
         color: colors.text.secondary,
         fontSize: 12,
+        fontWeight: "700",
+        marginHorizontal: 8,
+        fontStyle: "italic",
+    },
+    blackPlayerIcon: {
+        borderColor: "rgba(255,255,255,0.5)",
+        borderWidth: 1,
+        borderRadius: 6, // Make it look like a circle with border if size is 12
     },
 });

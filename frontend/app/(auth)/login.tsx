@@ -45,7 +45,7 @@ export default function LoginScreen() {
 
             // Redirect based on admin status
             if (response.isAdmin) {
-                router.replace("/(admin)/dashboard" as any);
+                router.replace("/admin/dashboard" as any);
             } else {
                 router.replace("/(tabs)");
             }

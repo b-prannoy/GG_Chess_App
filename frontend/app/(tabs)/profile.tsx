@@ -24,6 +24,7 @@ import { colors } from "@/constants/themes";
 import { authService } from "@/services/authService";
 import {
     Settings,
+    Video,
     Flame,
     TrendingUp,
     Heart,
@@ -124,12 +125,20 @@ export default function ProfileScreen() {
                     {/* Header */}
                     <View style={styles.header}>
                         <Text style={styles.headerTitle}>Profile</Text>
-                        <TouchableOpacity
-                            onPress={handleOpenSettings}
-                            style={styles.settingsButton}
-                        >
-                            <Settings size={22} color={colors.text.primary} />
-                        </TouchableOpacity>
+                        <View style={styles.headerActions}>
+                            <TouchableOpacity
+                                onPress={() => router.push("/admin/upload" as any)}
+                                style={styles.settingsButton}
+                            >
+                                <Video size={22} color={colors.text.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleOpenSettings}
+                                style={styles.settingsButton}
+                            >
+                                <Settings size={22} color={colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Avatar & User Info */}
@@ -289,6 +298,11 @@ const styles = StyleSheet.create({
     },
     settingsButton: {
         padding: 8,
+    },
+    headerActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
     },
     profileSection: {
         alignItems: "center",

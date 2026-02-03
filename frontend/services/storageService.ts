@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { Reel } from "@/types/reel";
 
 const STORAGE_DIR = FileSystem.documentDirectory + "chess_app/";

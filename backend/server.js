@@ -20,6 +20,8 @@ app.use("/auth", require("./routes/loginRoute"));
 app.use("/data", require("./routes/dataRoute"));
 app.use("/admin", require("./routes/adminRoute"));
 app.use("/reels", require("./routes/reelRoutes"));
+app.use("/upload", require("./routes/uploadRoute"));
+app.use("/uploads", express.static("uploads"));
 
 app.listen(process.env.PORT, () => {
     console.log("Server running on http://localhost:" + process.env.PORT);

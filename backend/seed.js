@@ -1,3 +1,4 @@
+console.log("DEBUG: Seed Script Started");
 require("dotenv").config();
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
@@ -11,58 +12,37 @@ const Comment = require("./models/Comment");
 // Real Chess Video URLs (using Pexels and other free stock video sites)
 const CHESS_VIDEOS = [
   {
-    url: "https://videos.pexels.com/video-files/5744067/5744067-uhd_2560_1440_25fps.mp4",
-    thumbnail: "https://images.pexels.com/videos/5744067/chess-game-king-pawn-5744067.jpeg?w=400",
-    title: "Sicilian Defense Masterclass",
-    description: "Learn the sharp Sicilian Defense - Black's most ambitious response to 1.e4.",
+    url: "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    thumbnail: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+    title: "Big Buck Bunny Defense",
+    description: "A classic opening for beginners.",
   },
   {
-    url: "https://videos.pexels.com/video-files/5702594/5702594-uhd_2560_1440_25fps.mp4",
-    thumbnail: "https://images.pexels.com/videos/5702594/chess-chess-pieces-game-5702594.jpeg?w=400",
-    title: "The Art of the Pin",
-    description: "Master the pin - one of the most powerful tactical weapons in chess.",
+    url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+    thumbnail: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg",
+    title: "Elephant's Gambit",
+    description: "Sharp tactical battle.",
   },
   {
-    url: "https://videos.pexels.com/video-files/5700776/5700776-uhd_2560_1440_25fps.mp4",
-    thumbnail: "https://images.pexels.com/videos/5700776/black-and-white-chess-game-5700776.jpeg?w=400",
-    title: "King's Indian Attack",
-    description: "A flexible opening system for White that works against any Black setup.",
+    url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    thumbnail: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg",
+    title: "Blazing Attacks",
+    description: " attacking the king with fire.",
   },
   {
-    url: "https://videos.pexels.com/video-files/6786620/6786620-uhd_2560_1440_25fps.mp4",
-    thumbnail: "https://images.pexels.com/videos/6786620/chess-chess-piece-pawn-strategy-6786620.jpeg?w=400",
-    title: "Pawn Endgame Essentials",
-    description: "The key principles every chess player must know about pawn endings.",
-  },
-  {
-    url: "https://videos.pexels.com/video-files/6985621/6985621-uhd_2560_1440_25fps.mp4",
-    thumbnail: "https://images.pexels.com/videos/6985621/chess-chess-board-game-6985621.jpeg?w=400",
-    title: "Queen's Gambit Accepted",
-    description: "When Black takes the gambit pawn - tactical opportunities abound!",
-  },
-  {
-    url: "https://videos.pexels.com/video-files/5700818/5700818-uhd_2560_1440_25fps.mp4",
-    thumbnail: "https://images.pexels.com/videos/5700818/chess-game-knight-pawn-5700818.jpeg?w=400",
-    title: "Knight Outposts Explained",
-    description: "How to use knight outposts to dominate the board in the middlegame.",
-  },
-  {
-    url: "https://videos.pexels.com/video-files/5701020/5701020-uhd_2560_1440_25fps.mp4",
-    thumbnail: "https://images.pexels.com/videos/5701020/board-game-chess-chess-piece-5701020.jpeg?w=400",
-    title: "Rook Lift Attack",
-    description: "The aggressive rook lift maneuver that crushes kingside defenses.",
-  },
-  {
-    url: "https://videos.pexels.com/video-files/5702548/5702548-uhd_2560_1440_25fps.mp4",
-    thumbnail: "https://images.pexels.com/videos/5702548/chess-chess-pieces-game-5702548.jpeg?w=400",
-    title: "Back Rank Mate Patterns",
-    description: "Never miss a back rank mate again - essential pattern recognition.",
+    url: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    thumbnail: "https://storage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerEscapes.jpg",
+    title: "Great Escapes",
+    description: "How to defend difficult positions.",
   },
 ];
 
 async function seed() {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    const dbUri = "mongodb://127.0.0.1:27017/chess_db";
+    console.log("Attempting to connect to:", dbUri);
+    console.log("Type of URI:", typeof dbUri);
+    await mongoose.connect(dbUri);
     console.log("MongoDB connected");
 
     // Clear existing data
@@ -160,7 +140,9 @@ async function seed() {
           title: video.title,
           description: video.description,
           tags: getTagsForIndex(index),
-          difficulty: getDifficultyForIndex(index)
+          difficulty: getDifficultyForIndex(index),
+          whitePlayer: games[index % games.length].whitePlayer,
+          blackPlayer: games[index % games.length].blackPlayer
         },
         gameId: games[index % games.length]._id,
         engagement: {
