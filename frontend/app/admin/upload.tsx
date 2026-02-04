@@ -8,22 +8,45 @@ import {
     ScrollView,
     ActivityIndicator,
     Alert,
-    Image,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
-import { Upload, X, Check } from "lucide-react-native";
+import { Upload, Link, Check, ArrowLeft, Film, Hash } from "lucide-react-native";
 import { colors } from "@/constants/themes";
 import { useRouter } from "expo-router";
-import { apiClient } from "@/services/api"; // Assuming you have an api client instance
+import { apiClient } from "@/services/api";
+import { GlassCard } from "@/components/ui/GlassCard";
+import * as Haptics from "expo-haptics";
+
+const DIFFICULTY_LEVELS = ["beginner", "intermediate", "advanced"];
+const BADGE_COLORS = {
+    beginner: colors.success,
+    intermediate: colors.warning,
+    advanced: colors.danger,
+};
+
+type UploadMode = "local" | "url";
 
 export default function UploadReelScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
+
+    // Upload mode toggle
+    const [uploadMode, setUploadMode] = useState<UploadMode>("local");
+
+    // Form state
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [whitePlayer, setWhitePlayer] = useState("");
     const [blackPlayer, setBlackPlayer] = useState("");
     const [difficulty, setDifficulty] = useState("intermediate");
+    const [tags, setTags] = useState("");
+
+    // Video source
     const [videoUri, setVideoUri] = useState<string | null>(null);
+    const [videoUrl, setVideoUrl] = useState("");
+
     const [isUploading, setIsUploading] = useState(false);
 
     const pickVideo = async () => {
@@ -35,206 +58,342 @@ export default function UploadReelScreen() {
 
         if (!result.canceled) {
             setVideoUri(result.assets[0].uri);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
     };
 
     const handleUpload = async () => {
-        if (!videoUri || !title) {
-            Alert.alert("Error", "Please select a video and enter a title.");
+        // Validate inputs
+        if (!title) {
+            Alert.alert("Error", "Please enter a title.");
+            return;
+        }
+
+        if (uploadMode === "local" && !videoUri) {
+            Alert.alert("Error", "Please select a video from your device.");
+            return;
+        }
+
+        if (uploadMode === "url" && !videoUrl) {
+            Alert.alert("Error", "Please enter a video URL.");
             return;
         }
 
         setIsUploading(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
         try {
-            // 1. Upload Video
-            const formData = new FormData();
-            formData.append("video", {
-                uri: videoUri,
-                name: "upload.mp4",
-                type: "video/mp4",
-            } as any);
+            let finalVideoUrl = videoUrl;
 
-            const uploadRes = await apiClient.post("/upload", formData, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
+            // If local upload, first upload the video file
+            if (uploadMode === "local" && videoUri) {
+                const formData = new FormData();
+                formData.append("video", {
+                    uri: videoUri,
+                    name: "upload.mp4",
+                    type: "video/mp4",
+                } as any);
 
-            if (!uploadRes.data.success) throw new Error("Video upload failed");
+                const uploadRes = await apiClient.post("/upload", formData, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
 
-            const videoUrl = uploadRes.data.url;
+                if (!uploadRes.data.success) throw new Error("Video upload failed");
+                finalVideoUrl = uploadRes.data.url;
+            }
 
-            // 2. Create Reel Record
+            // Prepare tags array
+            const tagsArray = tags.split(",").map((t) => t.trim()).filter(Boolean);
+
+            // Create reel data
             const reelData = {
-                video: {
-                    url: videoUrl,
-                    thumbnail: "", // Backend could generate, or use a default
-                    durationSec: 0, // Backend could calculate
+                adminId: "admin",
+                videoData: {
+                    video: {
+                        url: finalVideoUrl,
+                        thumbnail: "",
+                    },
+                    content: {
+                        title,
+                        description,
+                        tags: tagsArray.length > 0 ? tagsArray : ["chess"],
+                        difficulty,
+                        whitePlayer,
+                        blackPlayer,
+                    },
+                    status: "published",
                 },
-                content: {
-                    title,
-                    description,
-                    tags: ["chess", "upload"],
-                    difficulty,
-                    whitePlayer,
-                    blackPlayer,
-                },
-                status: "published",
             };
 
-            // Assuming a create reel endpoint exists or using generic data endpoint
-            // You might need to add a specific create endpoint in reelRoutes.js first
-            // For now, let's assume POST /reels works or we use a data endpoint
-            // Let's create a TODO to ensure backend supports this.
-            // I'll assume POST /reels is the standard REST way.
-            await apiClient.post("/reels", reelData);
+            await apiClient.post("/admin/video", reelData);
 
-            Alert.alert("Success", "Reel uploaded successfully!");
-            router.back();
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert("Success", "Reel uploaded successfully!", [
+                { text: "OK", onPress: () => router.back() },
+            ]);
         } catch (error) {
             console.error(error);
-            Alert.alert("Error", "Failed to upload reel.");
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert("Error", "Failed to upload reel. Please try again.");
         } finally {
             setIsUploading(false);
         }
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            <Text style={styles.header}>Upload New Reel</Text>
-
-            <TouchableOpacity style={styles.videoPicker} onPress={pickVideo}>
-                {videoUri ? (
-                    <View style={styles.videoPlaceholder}>
-                        <Check size={40} color={colors.accent.green} />
-                        <Text style={styles.videoText}>Video Selected</Text>
-                    </View>
-                ) : (
-                    <View style={styles.videoPlaceholder}>
-                        <Upload size={40} color={colors.text.secondary} />
-                        <Text style={styles.videoText}>Select Video</Text>
-                    </View>
-                )}
-            </TouchableOpacity>
-
-            <Text style={styles.label}>Title</Text>
-            <TextInput
-                style={styles.input}
-                placeholder="Ex: Amazing Sicilian Defense"
-                placeholderTextColor={colors.text.secondary}
-                value={title}
-                onChangeText={setTitle}
-            />
-
-            <Text style={styles.label}>Description</Text>
-            <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Describe the clip..."
-                placeholderTextColor={colors.text.secondary}
-                value={description}
-                onChangeText={setDescription}
-                multiline
-            />
-
-            <View style={styles.row}>
-                <View style={styles.halfInput}>
-                    <Text style={styles.label}>White Player</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Name"
-                        placeholderTextColor={colors.text.secondary}
-                        value={whitePlayer}
-                        onChangeText={setWhitePlayer}
-                    />
-                </View>
-                <View style={styles.halfInput}>
-                    <Text style={styles.label}>Black Player</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Name"
-                        placeholderTextColor={colors.text.secondary}
-                        value={blackPlayer}
-                        onChangeText={setBlackPlayer}
-                    />
-                </View>
-            </View>
-
-            <Text style={styles.label}>Difficulty</Text>
-            <View style={styles.difficultyContainer}>
-                {["beginner", "intermediate", "advanced"].map((level) => (
+        <LinearGradient
+            colors={[colors.background.primary, "#0f172a"]}
+            style={styles.container}
+        >
+            <ScrollView
+                contentContainerStyle={[
+                    styles.content,
+                    { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 40 },
+                ]}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Header */}
+                <View style={styles.header}>
                     <TouchableOpacity
-                        key={level}
-                        style={[
-                            styles.difficultyOption,
-                            difficulty === level && styles.selectedDifficulty,
-                        ]}
-                        onPress={() => setDifficulty(level)}
+                        onPress={() => router.back()}
+                        style={styles.backButton}
                     >
+                        <ArrowLeft size={24} color={colors.text.primary} />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Upload Reel</Text>
+                    <View style={{ width: 40 }} />
+                </View>
+
+                {/* Upload Mode Toggle */}
+                <GlassCard variant="dark" style={styles.modeToggle}>
+                    <TouchableOpacity
+                        style={[
+                            styles.modeButton,
+                            uploadMode === "local" && styles.modeButtonActive,
+                        ]}
+                        onPress={() => {
+                            setUploadMode("local");
+                            Haptics.selectionAsync();
+                        }}
+                    >
+                        <Upload size={18} color={uploadMode === "local" ? "#fff" : colors.text.muted} />
                         <Text
                             style={[
-                                styles.difficultyText,
-                                difficulty === level && styles.selectedDifficultyText,
+                                styles.modeText,
+                                uploadMode === "local" && styles.modeTextActive,
                             ]}
                         >
-                            {level.toUpperCase()}
+                            From Device
                         </Text>
                     </TouchableOpacity>
-                ))}
-            </View>
+                    <TouchableOpacity
+                        style={[
+                            styles.modeButton,
+                            uploadMode === "url" && styles.modeButtonActive,
+                        ]}
+                        onPress={() => {
+                            setUploadMode("url");
+                            Haptics.selectionAsync();
+                        }}
+                    >
+                        <Link size={18} color={uploadMode === "url" ? "#fff" : colors.text.muted} />
+                        <Text
+                            style={[
+                                styles.modeText,
+                                uploadMode === "url" && styles.modeTextActive,
+                            ]}
+                        >
+                            From URL
+                        </Text>
+                    </TouchableOpacity>
+                </GlassCard>
 
-            <TouchableOpacity
-                style={[styles.uploadButton, isUploading && styles.disabledButton]}
-                onPress={handleUpload}
-                disabled={isUploading}
-            >
-                {isUploading ? (
-                    <ActivityIndicator color={colors.text.primary} />
+                {/* Video Source Section */}
+                {uploadMode === "local" ? (
+                    <TouchableOpacity style={styles.videoPicker} onPress={pickVideo}>
+                        {videoUri ? (
+                            <View style={styles.videoPlaceholder}>
+                                <Check size={40} color={colors.success} />
+                                <Text style={styles.videoSelectedText}>Video Selected</Text>
+                                <Text style={styles.videoHint}>Tap to change</Text>
+                            </View>
+                        ) : (
+                            <View style={styles.videoPlaceholder}>
+                                <Upload size={40} color={colors.text.secondary} />
+                                <Text style={styles.videoText}>Select Video</Text>
+                                <Text style={styles.videoHint}>Tap to browse</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
                 ) : (
-                    <Text style={styles.uploadButtonText}>Upload Reel</Text>
+                    <GlassCard variant="dark" style={styles.urlInputCard}>
+                        <Link size={20} color={colors.accent.cyan} />
+                        <TextInput
+                            style={styles.urlInput}
+                            placeholder="Paste video URL here..."
+                            placeholderTextColor={colors.text.muted}
+                            value={videoUrl}
+                            onChangeText={setVideoUrl}
+                            autoCapitalize="none"
+                            keyboardType="url"
+                        />
+                    </GlassCard>
                 )}
-            </TouchableOpacity>
-        </ScrollView>
+
+                {/* Form Fields */}
+                <Text style={styles.label}>Title *</Text>
+                <TextInput
+                    style={styles.input}
+                    placeholder="Ex: Amazing Sicilian Defense"
+                    placeholderTextColor={colors.text.muted}
+                    value={title}
+                    onChangeText={setTitle}
+                />
+
+                <Text style={styles.label}>Description</Text>
+                <TextInput
+                    style={[styles.input, styles.textArea]}
+                    placeholder="Describe the clip..."
+                    placeholderTextColor={colors.text.muted}
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                />
+
+                <View style={styles.row}>
+                    <View style={styles.halfInput}>
+                        <Text style={styles.label}>White Player</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Name"
+                            placeholderTextColor={colors.text.muted}
+                            value={whitePlayer}
+                            onChangeText={setWhitePlayer}
+                        />
+                    </View>
+                    <View style={styles.halfInput}>
+                        <Text style={styles.label}>Black Player</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Name"
+                            placeholderTextColor={colors.text.muted}
+                            value={blackPlayer}
+                            onChangeText={setBlackPlayer}
+                        />
+                    </View>
+                </View>
+
+                <Text style={styles.label}>Difficulty</Text>
+                <View style={styles.difficultyContainer}>
+                    {DIFFICULTY_LEVELS.map((level) => (
+                        <TouchableOpacity
+                            key={level}
+                            style={[
+                                styles.difficultyOption,
+                                difficulty === level && {
+                                    backgroundColor: BADGE_COLORS[level as keyof typeof BADGE_COLORS],
+                                    borderColor: BADGE_COLORS[level as keyof typeof BADGE_COLORS],
+                                },
+                            ]}
+                            onPress={() => {
+                                setDifficulty(level);
+                                Haptics.selectionAsync();
+                            }}
+                        >
+                            <Text
+                                style={[
+                                    styles.difficultyText,
+                                    difficulty === level && styles.selectedDifficultyText,
+                                ]}
+                            >
+                                {level.toUpperCase()}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                <Text style={styles.label}>Tags</Text>
+                <View style={styles.tagsInputRow}>
+                    <Hash size={16} color={colors.text.muted} />
+                    <TextInput
+                        style={styles.tagsInput}
+                        placeholder="#opening, #tactics, #endgame"
+                        placeholderTextColor={colors.text.muted}
+                        value={tags}
+                        onChangeText={setTags}
+                    />
+                </View>
+
+                {/* Upload Button */}
+                <TouchableOpacity
+                    style={[styles.uploadButton, isUploading && styles.disabledButton]}
+                    onPress={handleUpload}
+                    disabled={isUploading}
+                >
+                    {isUploading ? (
+                        <ActivityIndicator color={colors.text.primary} />
+                    ) : (
+                        <>
+                            <Film size={20} color={colors.text.primary} />
+                            <Text style={styles.uploadButtonText}>Upload Reel</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+            </ScrollView>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background.primary,
     },
     content: {
         padding: 20,
     },
     header: {
-        fontSize: 24,
-        fontWeight: "bold",
-        color: colors.text.primary,
-        marginBottom: 20,
-        marginTop: 40,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 24,
     },
-    label: {
-        color: colors.text.secondary,
-        marginBottom: 8,
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: colors.glass.light,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: "700",
+        color: colors.text.primary,
+    },
+    modeToggle: {
+        flexDirection: "row",
+        padding: 4,
+        marginBottom: 20,
+    },
+    modeButton: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        padding: 12,
+        borderRadius: 10,
+    },
+    modeButtonActive: {
+        backgroundColor: colors.accent.purple,
+    },
+    modeText: {
+        color: colors.text.muted,
+        fontWeight: "600",
         fontSize: 14,
     },
-    input: {
-        backgroundColor: colors.background.secondary,
-        borderRadius: 12,
-        padding: 16,
-        color: colors.text.primary,
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.1)",
-    },
-    textArea: {
-        height: 100,
-        textAlignVertical: "top",
-    },
-    row: {
-        flexDirection: "row",
-        gap: 12,
-    },
-    halfInput: {
-        flex: 1,
+    modeTextActive: {
+        color: "#fff",
     },
     videoPicker: {
         height: 150,
@@ -249,16 +408,67 @@ const styles = StyleSheet.create({
     },
     videoPlaceholder: {
         alignItems: "center",
-        gap: 8,
+        gap: 4,
     },
     videoText: {
         color: colors.text.secondary,
+        fontSize: 16,
+        fontWeight: "600",
+        marginTop: 8,
+    },
+    videoSelectedText: {
+        color: colors.success,
+        fontSize: 16,
+        fontWeight: "600",
+        marginTop: 8,
+    },
+    videoHint: {
+        color: colors.text.muted,
+        fontSize: 12,
+    },
+    urlInputCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        padding: 16,
+        marginBottom: 24,
+        gap: 12,
+    },
+    urlInput: {
+        flex: 1,
+        color: colors.text.primary,
+        fontSize: 16,
+    },
+    label: {
+        color: colors.text.secondary,
+        marginBottom: 8,
         fontSize: 14,
+        fontWeight: "500",
+    },
+    input: {
+        backgroundColor: colors.background.secondary,
+        borderRadius: 12,
+        padding: 16,
+        color: colors.text.primary,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.1)",
+        fontSize: 16,
+    },
+    textArea: {
+        height: 100,
+        textAlignVertical: "top",
+    },
+    row: {
+        flexDirection: "row",
+        gap: 12,
+    },
+    halfInput: {
+        flex: 1,
     },
     difficultyContainer: {
         flexDirection: "row",
         gap: 10,
-        marginBottom: 30,
+        marginBottom: 20,
     },
     difficultyOption: {
         flex: 1,
@@ -269,23 +479,38 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.1)",
     },
-    selectedDifficulty: {
-        backgroundColor: colors.accent.cyan,
-        borderColor: colors.accent.cyan,
-    },
     difficultyText: {
-        color: colors.text.secondary,
-        fontSize: 12,
-        fontWeight: "600",
+        color: colors.text.muted,
+        fontSize: 11,
+        fontWeight: "700",
     },
     selectedDifficultyText: {
-        color: colors.text.primary, // or black depending on theme
+        color: "#fff",
+    },
+    tagsInputRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: colors.background.secondary,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 30,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.1)",
+        gap: 10,
+    },
+    tagsInput: {
+        flex: 1,
+        color: colors.text.primary,
+        fontSize: 16,
     },
     uploadButton: {
-        backgroundColor: colors.accent.green,
+        backgroundColor: colors.success,
         padding: 18,
         borderRadius: 12,
+        flexDirection: "row",
         alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
     },
     disabledButton: {
         opacity: 0.7,

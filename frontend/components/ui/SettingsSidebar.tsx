@@ -16,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useThemeStore } from "@/stores/themeStore";
+import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/services/authService";
 import { colors } from "@/constants/themes";
 import * as Haptics from "expo-haptics";
@@ -113,12 +114,18 @@ export function SettingsSidebar({ isOpen, onClose }: SettingsSidebarProps) {
         toggleHaptic();
     };
 
-    const handleLogout = async () => {
+    const handleLogout = () => {
         if (hapticEnabled) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         }
+
+        // Close sidebar first
         onClose();
-        await authService.logout();
+
+        // Clear auth state (only once - don't call authService.logout as it also calls store.logout)
+        useAuthStore.getState().logout();
+
+        // Navigate to login
         router.replace("/(auth)/login");
     };
 

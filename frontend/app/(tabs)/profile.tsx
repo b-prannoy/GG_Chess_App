@@ -39,7 +39,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export default function ProfileScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const { user, isAuthenticated } = useAuthStore();
+    const { user, isAuthenticated, isAdmin } = useAuthStore();
     const { hapticEnabled } = useThemeStore();
 
     // Use stable selectors
@@ -126,12 +126,15 @@ export default function ProfileScreen() {
                     <View style={styles.header}>
                         <Text style={styles.headerTitle}>Profile</Text>
                         <View style={styles.headerActions}>
-                            <TouchableOpacity
-                                onPress={() => router.push("/admin/upload" as any)}
-                                style={styles.settingsButton}
-                            >
-                                <Video size={22} color={colors.text.primary} />
-                            </TouchableOpacity>
+                            {/* Only show upload button for admin users */}
+                            {isAdmin && (
+                                <TouchableOpacity
+                                    onPress={() => router.push("/admin/upload" as any)}
+                                    style={styles.settingsButton}
+                                >
+                                    <Video size={22} color={colors.text.primary} />
+                                </TouchableOpacity>
+                            )}
                             <TouchableOpacity
                                 onPress={handleOpenSettings}
                                 style={styles.settingsButton}
