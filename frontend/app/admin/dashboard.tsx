@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Animated, TouchableOpacity, RefreshControl, Tex
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { Users, Film, Trash2, LogOut, Plus, Play, Edit2, X, Hash, Activity } from "lucide-react-native";
+import { Users, Film, Trash2, LogOut, Plus, Play, Edit2, X, Hash, Activity, Home } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { colors } from "@/constants/themes";
@@ -271,18 +271,32 @@ export default function AdminDashboard() {
                             DASHBOARD
                         </Text>
                     </View>
-                    <TouchableOpacity
-                        onPress={handleLogout}
-                        style={{
-                            padding: 10,
-                            backgroundColor: "rgba(239, 68, 68, 0.15)",
-                            borderRadius: 12,
-                            borderWidth: 1,
-                            borderColor: "rgba(239, 68, 68, 0.3)"
-                        }}
-                    >
-                        <LogOut size={20} color={colors.danger} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                        <TouchableOpacity
+                            onPress={() => router.push("/(tabs)/profile" as any)}
+                            style={{
+                                padding: 10,
+                                backgroundColor: "rgba(34, 197, 94, 0.15)",
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: "rgba(34, 197, 94, 0.3)"
+                            }}
+                        >
+                            <Home size={20} color={colors.success} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={handleLogout}
+                            style={{
+                                padding: 10,
+                                backgroundColor: "rgba(239, 68, 68, 0.15)",
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: "rgba(239, 68, 68, 0.3)"
+                            }}
+                        >
+                            <LogOut size={20} color={colors.danger} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* Main Content */}
@@ -317,131 +331,39 @@ export default function AdminDashboard() {
                             </GlassCard>
                         </View>
 
-                        {/* Tabs */}
-                        <View style={{ flexDirection: "row", marginBottom: 20, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 4 }}>
+                        {/* Action Buttons */}
+                        <View style={{ flexDirection: "row", gap: 15, marginBottom: 20 }}>
                             <TouchableOpacity
                                 onPress={() => setActiveTab("manage")}
                                 style={{
                                     flex: 1,
-                                    padding: 12,
+                                    padding: 14,
                                     alignItems: "center",
-                                    backgroundColor: activeTab === "manage" ? "rgba(255,255,255,0.1)" : "transparent",
-                                    borderRadius: 10
+                                    backgroundColor: activeTab === "manage" ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.05)",
+                                    borderRadius: 12,
+                                    borderWidth: 1,
+                                    borderColor: activeTab === "manage" ? colors.text.muted : "transparent"
                                 }}
                             >
                                 <Text style={{ color: activeTab === "manage" ? "white" : colors.text.muted, fontWeight: "600" }}>Manage Content</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                onPress={() => setActiveTab("create")}
+                                onPress={() => router.push("/admin/upload" as any)}
                                 style={{
                                     flex: 1,
-                                    padding: 12,
+                                    padding: 14,
                                     alignItems: "center",
-                                    backgroundColor: activeTab === "create" ? colors.accent.purple : "transparent",
-                                    borderRadius: 10
+                                    backgroundColor: colors.accent.purple,
+                                    borderRadius: 12,
+                                    flexDirection: "row",
+                                    justifyContent: "center",
+                                    gap: 8
                                 }}
                             >
-                                <Text style={{ color: activeTab === "create" ? "white" : colors.text.muted, fontWeight: "600" }}>+ Create Reel</Text>
+                                <Plus size={18} color="white" />
+                                <Text style={{ color: "white", fontWeight: "600" }}>Upload Reel</Text>
                             </TouchableOpacity>
                         </View>
-
-                        {/* Create / Edit Form */}
-                        {activeTab === "create" && (
-                            <GlassCard variant="light" style={{ padding: 20 }}>
-                                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary, marginBottom: 20 }}>
-                                    New Reel Metadata
-                                </Text>
-
-                                <TextInput
-                                    placeholder="Video Source URL"
-                                    placeholderTextColor={colors.text.muted}
-                                    value={formData.videoUrl}
-                                    onChangeText={(t) => setFormData({ ...formData, videoUrl: t })}
-                                    style={styles.input}
-                                />
-
-                                <TextInput
-                                    placeholder="Title (e.g. Italian Game)"
-                                    placeholderTextColor={colors.text.muted}
-                                    value={formData.title}
-                                    onChangeText={(t) => setFormData({ ...formData, title: t })}
-                                    style={styles.input}
-                                />
-
-                                <TextInput
-                                    placeholder="Description"
-                                    placeholderTextColor={colors.text.muted}
-                                    value={formData.description}
-                                    onChangeText={(t) => setFormData({ ...formData, description: t })}
-                                    multiline
-                                    style={[styles.input, { height: 80 }]}
-                                />
-
-                                {/* Difficulty Selector */}
-                                <Text style={{ color: colors.text.secondary, marginBottom: 10, fontSize: 12 }}>Difficulty Level</Text>
-                                <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
-                                    {DIFFICULTY_LEVELS.map((level) => (
-                                        <TouchableOpacity
-                                            key={level}
-                                            onPress={() => setFormData({ ...formData, difficulty: level as any })}
-                                            style={{
-                                                paddingVertical: 8,
-                                                paddingHorizontal: 16,
-                                                borderRadius: 20,
-                                                backgroundColor: formData.difficulty === level ? BADGE_COLORS[level as keyof typeof BADGE_COLORS] : "rgba(255,255,255,0.1)",
-                                                borderWidth: 1,
-                                                borderColor: formData.difficulty === level ? BADGE_COLORS[level as keyof typeof BADGE_COLORS] : "rgba(255,255,255,0.1)"
-                                            }}
-                                        >
-                                            <Text style={{
-                                                color: formData.difficulty === level ? "white" : colors.text.muted,
-                                                textTransform: "capitalize",
-                                                fontWeight: "600",
-                                                fontSize: 12
-                                            }}>
-                                                {level}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-
-                                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 15 }}>
-                                    <Hash size={16} color={colors.text.muted} style={{ marginRight: 10 }} />
-                                    <TextInput
-                                        placeholder="Tags (comma separated)"
-                                        placeholderTextColor={colors.text.muted}
-                                        value={formData.tags}
-                                        onChangeText={(t) => setFormData({ ...formData, tags: t })}
-                                        style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                                    />
-                                </View>
-
-                                <Text style={{ color: colors.accent.cyan, fontSize: 12, fontWeight: "bold", marginTop: 10, marginBottom: 10 }}>CHESS DATA</Text>
-
-                                <TextInput
-                                    placeholder="FEN String"
-                                    placeholderTextColor={colors.text.muted}
-                                    value={formData.fen}
-                                    onChangeText={(t) => setFormData({ ...formData, fen: t })}
-                                    style={styles.input}
-                                />
-
-                                <TextInput
-                                    placeholder="PGN (Move Notation)"
-                                    placeholderTextColor={colors.text.muted}
-                                    value={formData.pgn}
-                                    onChangeText={(t) => setFormData({ ...formData, pgn: t })}
-                                    style={styles.input}
-                                />
-
-                                <AnimatedButton
-                                    title="Deploy to Network"
-                                    onPress={handlePostReel}
-                                    loading={isLoading}
-                                    icon={<Plus size={20} color="white" />}
-                                />
-                            </GlassCard>
-                        )}
 
                         {/* List View */}
                         {activeTab === "manage" && (

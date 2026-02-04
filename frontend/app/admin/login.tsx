@@ -1,5 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Animated, Alert } from "react-native";
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    KeyboardAvoidingView,
+    Platform,
+    Animated,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -8,16 +16,17 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { authService } from "@/services/authService";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/constants/themes";
-import { Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react-native";
+import { Mail, Lock, Eye, EyeOff, Shield, ArrowLeft } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 // Test admin credentials for local development
-const TEST_ADMIN = {
+// These work without backend connection
+const TEST_ADMIN_CREDENTIALS = {
     email: "admin@chess.com",
     password: "admin123",
 };
 
-export default function LoginScreen() {
+export default function AdminLoginScreen() {
     const router = useRouter();
     const login = useAuthStore((state) => state.login);
 
@@ -28,16 +37,24 @@ export default function LoginScreen() {
     const [error, setError] = useState<string | null>(null);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(30)).current;
 
     useEffect(() => {
-        Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-        }).start();
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+        ]).start();
     }, []);
 
-    const handleLogin = async () => {
+    const handleAdminLogin = async () => {
         if (!email || !password) {
             setError("Please fill in all fields");
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -47,33 +64,42 @@ export default function LoginScreen() {
         setIsLoading(true);
         setError(null);
 
-        // Check for test admin credentials (works offline)
-        if (email === TEST_ADMIN.email && password === TEST_ADMIN.password) {
-            const adminUser = {
-                id: "admin-001",
+        // Check for test admin credentials first (works without backend)
+        if (
+            email === TEST_ADMIN_CREDENTIALS.email &&
+            password === TEST_ADMIN_CREDENTIALS.password
+        ) {
+            // Login with test admin user
+            const testAdminUser = {
+                id: "test-admin-001",
                 username: "Admin",
-                email: TEST_ADMIN.email,
+                email: TEST_ADMIN_CREDENTIALS.email,
             };
-            login(adminUser, "admin-token", true);
+            login(testAdminUser, "test-admin-token", true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             router.replace("/admin/dashboard" as any);
             setIsLoading(false);
             return;
         }
 
-        // Try backend login for other users
+        // Try backend login
         try {
             const response = await authService.login(email, password);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-            // Redirect based on admin status
-            if (response.isAdmin) {
-                router.replace("/admin/dashboard" as any);
-            } else {
-                router.replace("/(tabs)");
+            // Validate admin access
+            if (!response.isAdmin) {
+                setError("Access denied. Admin privileges required.");
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                // Logout the non-admin user
+                authService.logout();
+                return;
             }
+
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            router.replace("/admin/dashboard" as any);
         } catch (err: any) {
-            const errorMessage = err.response?.data?.error || "Login failed. Please try again.";
+            const errorMessage =
+                err.response?.data?.error || "Login failed. Please try again.";
             setError(errorMessage);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         } finally {
@@ -83,7 +109,7 @@ export default function LoginScreen() {
 
     return (
         <LinearGradient
-            colors={[colors.background.primary, colors.background.secondary]}
+            colors={[colors.background.primary, "#0a0a1a", colors.background.secondary]}
             style={{ flex: 1 }}
         >
             <SafeAreaView style={{ flex: 1 }}>
@@ -107,19 +133,58 @@ export default function LoginScreen() {
                         <ArrowLeft size={24} color={colors.text.primary} />
                     </TouchableOpacity>
 
-                    <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
-                        {/* Header */}
-                        <View style={{ marginBottom: 32 }}>
-                            <Text style={{ color: colors.text.primary, fontSize: 32, fontWeight: "800" }}>
-                                Welcome Back
+                    <Animated.View
+                        style={{
+                            opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }],
+                            flex: 1,
+                        }}
+                    >
+                        {/* Admin Badge */}
+                        <View
+                            style={{
+                                alignItems: "center",
+                                marginBottom: 32,
+                            }}
+                        >
+                            <View
+                                style={{
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: 40,
+                                    backgroundColor: "rgba(239, 68, 68, 0.15)",
+                                    borderWidth: 2,
+                                    borderColor: "rgba(239, 68, 68, 0.3)",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    marginBottom: 16,
+                                }}
+                            >
+                                <Shield size={40} color={colors.danger} />
+                            </View>
+                            <Text
+                                style={{
+                                    color: colors.text.primary,
+                                    fontSize: 28,
+                                    fontWeight: "900",
+                                    letterSpacing: 2,
+                                }}
+                            >
+                                ADMIN ACCESS
                             </Text>
-                            <Text style={{ color: colors.text.secondary, fontSize: 16, marginTop: 8 }}>
-                                Sign in to continue your chess journey
+                            <Text
+                                style={{
+                                    color: colors.text.secondary,
+                                    fontSize: 14,
+                                    marginTop: 8,
+                                }}
+                            >
+                                Restricted area • Authorized personnel only
                             </Text>
                         </View>
 
                         {/* Form */}
-                        <GlassCard variant="light" style={{ marginBottom: 24 }}>
+                        <GlassCard variant="dark" style={{ marginBottom: 24 }}>
                             {/* Email Input */}
                             <View
                                 style={{
@@ -133,7 +198,7 @@ export default function LoginScreen() {
                             >
                                 <Mail size={20} color={colors.text.muted} />
                                 <TextInput
-                                    placeholder="Email"
+                                    placeholder="Admin Email"
                                     placeholderTextColor={colors.text.muted}
                                     value={email}
                                     onChangeText={(text) => {
@@ -175,7 +240,9 @@ export default function LoginScreen() {
                                         fontSize: 16,
                                     }}
                                 />
-                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                <TouchableOpacity
+                                    onPress={() => setShowPassword(!showPassword)}
+                                >
                                     {showPassword ? (
                                         <EyeOff size={20} color={colors.text.muted} />
                                     ) : (
@@ -187,45 +254,45 @@ export default function LoginScreen() {
 
                         {/* Error Message */}
                         {error && (
-                            <Text style={{ color: colors.danger, marginBottom: 16, textAlign: "center" }}>
-                                {error}
-                            </Text>
+                            <View
+                                style={{
+                                    backgroundColor: "rgba(239, 68, 68, 0.15)",
+                                    borderRadius: 12,
+                                    padding: 12,
+                                    marginBottom: 16,
+                                    borderWidth: 1,
+                                    borderColor: "rgba(239, 68, 68, 0.3)",
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        color: colors.danger,
+                                        textAlign: "center",
+                                        fontWeight: "600",
+                                    }}
+                                >
+                                    {error}
+                                </Text>
+                            </View>
                         )}
 
                         {/* Login Button */}
                         <AnimatedButton
-                            title="Sign In"
+                            title="Authenticate"
                             size="lg"
-                            onPress={handleLogin}
+                            onPress={handleAdminLogin}
                             loading={isLoading}
                             disabled={!email || !password || isLoading}
+                            icon={<Shield size={20} color={colors.text.primary} />}
                         />
 
-                        {/* Register Link */}
-                        <View
-                            style={{
-                                flexDirection: "row",
-                                justifyContent: "center",
-                                marginTop: 24,
-                            }}
-                        >
-                            <Text style={{ color: colors.text.secondary }}>
-                                Don't have an account?{" "}
-                            </Text>
-                            <TouchableOpacity onPress={() => router.push("/(auth)/signup")}>
-                                <Text style={{ color: colors.accent.purple, fontWeight: "600" }}>
-                                    Sign Up
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Guest Mode */}
+                        {/* Back to User Login */}
                         <TouchableOpacity
-                            onPress={() => router.replace("/(tabs)")}
+                            onPress={() => router.push("/(auth)/login")}
                             style={{ marginTop: 32, alignItems: "center" }}
                         >
                             <Text style={{ color: colors.text.muted, fontSize: 14 }}>
-                                Continue as Guest
+                                Not an admin? Go to user login
                             </Text>
                         </TouchableOpacity>
                     </Animated.View>
