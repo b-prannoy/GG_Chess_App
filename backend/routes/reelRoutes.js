@@ -7,6 +7,9 @@ import {
     getReelsByGame,
     viewReel,
     getReelStats,
+    getPublicFolderStats,
+    getPublicGrandmasters,
+    getReelsByFolder,
 } from "../controllers/reelController.js";
 import {
     likeReel,
@@ -25,6 +28,15 @@ router.get("/", getFeed);
 
 // GET /reels/random - Get random reels (for "Discover" section)
 router.get("/random", getRandomReels);
+
+// GET /reels/folders - Get folder stats (random vs grandmaster counts)
+router.get("/folders", getPublicFolderStats);
+
+// GET /reels/grandmasters - Get list of grandmasters with reel counts
+router.get("/grandmasters", getPublicGrandmasters);
+
+// GET /reels/by-folder - Get reels by folder and optionally grandmaster
+router.get("/by-folder", getReelsByFolder);
 
 // GET /reels/games - Get list of available games (for game selection UI)
 router.get("/games", getAvailableGames);
@@ -46,6 +58,9 @@ router.post("/:reelId/view", viewReel);
 // POST /reels/:reelId/like - Like a reel
 router.post("/:reelId/like", verifyToken, likeReel);
 
+// PATCH /reels/:reelId/like - Like/Unlike a reel (frontend uses PATCH)
+router.patch("/:reelId/like", verifyToken, likeReel);
+
 // POST /reels/:reelId/unlike - Unlike a reel
 router.post("/:reelId/unlike", verifyToken, unlikeReel);
 
@@ -56,3 +71,4 @@ router.post("/:reelId/comments", verifyToken, createComment);
 router.delete("/:reelId/comments/:commentId", verifyToken, deleteComment);
 
 export default router;
+

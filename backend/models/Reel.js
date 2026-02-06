@@ -34,6 +34,17 @@ const reelSchema = new mongoose.Schema({
     enum: ["draft", "published", "archived"],
     default: "draft",
   },
+
+  folder: {
+    type: String,
+    enum: ["random", "grandmaster"],
+    default: "random",
+  },
+
+  grandmaster: {
+    type: String,
+    default: null,
+  },
 }, { timestamps: true });
 
 reelSchema.index({ "content.tags": 1 });

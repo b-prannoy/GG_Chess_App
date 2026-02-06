@@ -3,14 +3,18 @@ import Reel from "../models/Reel.js";
 
 // ============ LIKE FUNCTIONS ============
 
-// POST /reels/:reelId/like - Like a reel (requires auth)
+// POST/PATCH /reels/:reelId/like - Like or unlike a reel based on action (requires auth)
 export const likeReel = async (req, res) => {
     try {
         const { reelId } = req.params;
+        const { action } = req.body; // "like" or "unlike"
+
+        // Determine increment based on action (default to like if not specified)
+        const increment = action === "unlike" ? -1 : 1;
 
         const reel = await Reel.findByIdAndUpdate(
             reelId,
-            { $inc: { "engagement.likes": 1 } },
+            { $inc: { "engagement.likes": increment } },
             { new: true }
         );
 
@@ -18,12 +22,18 @@ export const likeReel = async (req, res) => {
             return res.status(404).json({ error: "Reel not found" });
         }
 
+        // Ensure likes don't go negative
+        if (reel.engagement.likes < 0) {
+            reel.engagement.likes = 0;
+            await reel.save();
+        }
+
         res.json({
             success: true,
-            message: "Reel liked",
+            message: action === "unlike" ? "Reel unliked" : "Reel liked",
             likes: reel.engagement.likes,
         });
-        console.log(`POST /reels/${reelId}/like - Reel liked, total likes: ${reel.engagement.likes}`);
+        console.log(`POST /reels/${reelId}/like - Reel ${action === "unlike" ? "unliked" : "liked"}, total likes: ${reel.engagement.likes}`);
     } catch (err) {
         console.error("POST /reels/:reelId/like - Error:", err);
         res.status(500).json({ error: "Failed to like reel", message: err.message });
@@ -213,7 +223,7 @@ export const getCommentsByReel = async (req, res) => {
         res.json({
             success: true,
             count: comments.length,
-            data: comments,
+            comments: comments,
         });
         console.log(`GET /reels/${reelId}/comments - ${comments.length} comments fetched`);
     } catch (error) {

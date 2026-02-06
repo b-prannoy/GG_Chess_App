@@ -8,6 +8,7 @@ import authRoutes from "./routes/authRoutes.js";
 import dataRoutes from "./routes/dataRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import reelRoutes from "./routes/reelRoutes.js";
+import streakRoutes from "./routes/streakRoutes.js";
 
 const app = express();
 
@@ -18,6 +19,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Serve static files (videos, images) from /public folder
+app.use('/public', express.static('public'));
+
 // Connect to database
 await connectDB();
 
@@ -26,6 +30,7 @@ app.use("/auth", authRoutes);
 app.use("/data", dataRoutes);
 app.use("/admin", adminRoutes);
 app.use("/reels", reelRoutes);
+app.use("/streak", streakRoutes);
 
 // Start server
 app.listen(PORT, () => {
